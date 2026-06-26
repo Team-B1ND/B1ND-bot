@@ -1,13 +1,13 @@
 export const TYPE_META = {
-  bug: { issueLabel: 'type: bug', titlePrefix: '[Bug] ' },
-  feature: { issueLabel: 'type: feature', titlePrefix: '[Feature] ' },
-  enhancement: { issueLabel: 'type: enhancement', titlePrefix: '[Enhancement] ' },
+  bug: { issueLabel: 'type: bug', titlePrefix: '[Bug] ', requiredItems: 4 },
+  feature: { issueLabel: 'type: feature', titlePrefix: '[Feature] ', requiredItems: 3 },
+  enhancement: { issueLabel: 'type: enhancement', titlePrefix: '[Enhancement] ', requiredItems: 2 },
 };
 
-export function validateContent(content) {
+export function validateContent(content, requiredItems) {
   if (!content) return false;
   const numberedLines = content.match(/^\s*\d+[.)]/gm) ?? [];
-  return numberedLines.length >= 2;
+  return numberedLines.length >= requiredItems;
 }
 
 export function buildIssueBody({ platform, content, attachmentUrls = [], author, threadUrl }) {

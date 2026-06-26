@@ -67,11 +67,11 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
     const issueRef = await findIssueRef(thread);
 
     if (!issueRef) {
-      if (!validateContent(newMessage.content)) return;
+      const meta = TYPE_META[type];
+      if (!validateContent(newMessage.content, meta.requiredItems)) return;
 
       const platform = resolvePlatform(thread);
       const repo = resolveRepo(platform);
-      const meta = TYPE_META[type];
 
       const { data: issue } = await octokit.rest.issues.create({
         owner: GITHUB_OWNER,
@@ -119,18 +119,18 @@ client.on('threadCreate', async (thread, newlyCreated) => {
 
   try {
     const starterMessage = await thread.fetchStarterMessage();
+    const meta = TYPE_META[type];
 
-    if (!validateContent(starterMessage?.content)) {
+    if (!validateContent(starterMessage?.content, meta.requiredItems)) {
       await thread.send(
-        '게시글이 가이드라인 형식을 따르지 않아 이슈가 등록되지 않았습니다.\n' +
-          '"1. 현재 어떻게 동작하고 있는지", "2. 어떻게 개선하면 좋을지"를 포함해 게시글을 수정해주세요.',
+        `게시글이 가이드라인 형식을 따르지 않아 이슈가 등록되지 않았습니다.\n` +
+          `포스트 가이드라인에 안내된 필수 항목 ${meta.requiredItems}개를 포함해 게시글을 수정해주세요.`,
       );
       return;
     }
 
     const platform = resolvePlatform(thread);
     const repo = resolveRepo(platform);
-    const meta = TYPE_META[type];
 
     const { data: issue } = await octokit.rest.issues.create({
       owner: GITHUB_OWNER,
