@@ -4,6 +4,12 @@ export const TYPE_META = {
   enhancement: { issueLabel: 'type: enhancement', titlePrefix: '[Enhancement] ' },
 };
 
+export function validateContent(content) {
+  if (!content) return false;
+  const numberedLines = content.match(/^\s*\d+[.)]/gm) ?? [];
+  return numberedLines.length >= 2;
+}
+
 export function buildIssueBody({ platform, content, attachmentUrls = [], author, threadUrl }) {
   const lines = [`### 대상 플랫폼\n${platform}`, `### 내용\n${content || '(본문 없음)'}`];
   if (attachmentUrls.length > 0) {

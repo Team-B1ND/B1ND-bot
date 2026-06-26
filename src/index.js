@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits } from 'discord.js';
 import { Octokit } from 'octokit';
-import { TYPE_META, buildIssueBody } from './templates.js';
+import { TYPE_META, buildIssueBody, validateContent } from './templates.js';
 
 const { DISCORD_TOKEN, GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO } = process.env;
 
@@ -65,7 +65,31 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
 
   try {
     const issueRef = await findIssueRef(thread);
-    if (!issueRef) return;
+
+    if (!issueRef) {
+      if (!validateContent(newMessage.content)) return;
+
+      const platform = resolvePlatform(thread);
+      const repo = resolveRepo(platform);
+      const meta = TYPE_META[type];
+
+      const { data: issue } = await octokit.rest.issues.create({
+        owner: GITHUB_OWNER,
+        repo,
+        title: `${meta.titlePrefix}${thread.name}`,
+        body: buildIssueBody({
+          platform,
+          content: newMessage.content,
+          attachmentUrls: newMessage.attachments.map((a) => a.url),
+          author: newMessage.author?.tag ?? '알 수 없음',
+          threadUrl: thread.url,
+        }),
+        labels: [meta.issueLabel],
+      });
+
+      await thread.send(`이슈가 등록되었습니다: ${issue.html_url}`);
+      return;
+    }
 
     const platform = resolvePlatform(thread);
     const meta = TYPE_META[type];
@@ -95,6 +119,15 @@ client.on('threadCreate', async (thread, newlyCreated) => {
 
   try {
     const starterMessage = await thread.fetchStarterMessage();
+
+    if (!validateContent(starterMessage?.content)) {
+      await thread.send(
+        '게시글이 가이드라인 형식을 따르지 않아 이슈가 등록되지 않았습니다.\n' +
+          '"1. 현재 어떻게 동작하고 있는지", "2. 어떻게 개선하면 좋을지"를 포함해 게시글을 수정해주세요.',
+      );
+      return;
+    }
+
     const platform = resolvePlatform(thread);
     const repo = resolveRepo(platform);
     const meta = TYPE_META[type];
