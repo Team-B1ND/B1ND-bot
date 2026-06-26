@@ -2,6 +2,8 @@ import 'dotenv/config';
 import { Client, GatewayIntentBits } from 'discord.js';
 import { Octokit } from 'octokit';
 import { TYPE_META, buildIssueBody, validateContent } from './templates.js';
+import { setThreadForIssue } from './store.js';
+import { startWebhookServer } from './webhook.js';
 
 const { DISCORD_TOKEN, GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO } = process.env;
 
@@ -44,6 +46,7 @@ const client = new Client({
 
 client.once('clientReady', () => {
   console.log(`Logged in as ${client.user.tag}`);
+  startWebhookServer(client);
 });
 
 async function findIssueRef(thread) {
@@ -87,6 +90,7 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
         labels: [meta.issueLabel],
       });
 
+      setThreadForIssue(GITHUB_OWNER, repo, issue.number, thread.id);
       await thread.send(`이슈가 등록되었습니다: ${issue.html_url}`);
       return;
     }
@@ -146,6 +150,7 @@ client.on('threadCreate', async (thread, newlyCreated) => {
       labels: [meta.issueLabel],
     });
 
+    setThreadForIssue(GITHUB_OWNER, repo, issue.number, thread.id);
     await thread.send(`이슈가 등록되었습니다: ${issue.html_url}`);
   } catch (error) {
     console.error('Failed to create GitHub issue from forum thread:', error);
