@@ -46,6 +46,47 @@ client.once('clientReady', () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
+async function findIssueRef(thread) {
+  const messages = await thread.messages.fetch({ limit: 50 });
+  const botMessage = messages.find((m) => m.author.id === client.user.id && /이슈가 등록되었습니다: /.test(m.content));
+  const match = botMessage?.content.match(/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)/);
+  if (!match) return null;
+  const [, owner, repo, number] = match;
+  return { owner, repo, issue_number: Number(number) };
+}
+
+client.on('messageUpdate', async (oldMessage, newMessage) => {
+  const thread = newMessage.channel;
+  if (!thread?.isThread?.()) return;
+  if (newMessage.id !== thread.id) return;
+
+  const type = TYPE_BY_CHANNEL[thread.parentId];
+  if (!type) return;
+
+  try {
+    const issueRef = await findIssueRef(thread);
+    if (!issueRef) return;
+
+    const platform = resolvePlatform(thread);
+    const meta = TYPE_META[type];
+
+    await octokit.rest.issues.update({
+      ...issueRef,
+      title: `${meta.titlePrefix}${thread.name}`,
+      body: buildIssueBody({
+        platform,
+        content: newMessage.content,
+        attachmentUrls: newMessage.attachments.map((a) => a.url),
+        author: newMessage.author?.tag ?? '알 수 없음',
+        threadUrl: thread.url,
+      }),
+    });
+  } catch (error) {
+    console.error('Failed to update GitHub issue from forum thread edit:', error);
+    await thread.send('이슈 수정에 실패했습니다. 운영자에게 문의해주세요.');
+  }
+});
+
 client.on('threadCreate', async (thread, newlyCreated) => {
   if (!newlyCreated) return;
 
