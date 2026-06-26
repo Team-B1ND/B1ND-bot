@@ -34,7 +34,13 @@ function resolvePlatform(thread) {
 }
 
 const octokit = new Octokit({ auth: GITHUB_TOKEN });
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
 
 client.once('clientReady', () => {
   console.log(`Logged in as ${client.user.tag}`);
@@ -59,6 +65,7 @@ client.on('threadCreate', async (thread, newlyCreated) => {
       body: buildIssueBody({
         platform,
         content: starterMessage?.content,
+        attachmentUrls: starterMessage?.attachments.map((a) => a.url) ?? [],
         author: starterMessage?.author?.tag ?? '알 수 없음',
         threadUrl: thread.url,
       }),
